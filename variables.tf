@@ -177,6 +177,12 @@ variable "allow_ssl_requests_only" {
   description = "Set to `true` to require requests to use Secure Socket Layer (HTTPS/SSL). This will explicitly deny access to HTTP requests"
 }
 
+variable "bucket_acl" {
+  type        = string
+  default     = "public-read"
+  description = "Override to support private websites restricted by IP"
+}
+
 variable "trusted_ips" {
   type        = list(string)
   default     = []

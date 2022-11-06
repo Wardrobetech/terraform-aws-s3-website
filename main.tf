@@ -45,7 +45,7 @@ resource "aws_s3_bucket" "default" {
   #bridgecrew:skip=BC_AWS_S3_1:The bucket used for a public static website. (https://docs.bridgecrew.io/docs/s3_1-acl-read-permissions-everyone)
   #bridgecrew:skip=BC_AWS_S3_14:Skipping `Ensure all data stored in the S3 bucket is securely encrypted at rest` check until bridgecrew will support dynamic blocks (https://github.com/bridgecrewio/checkov/issues/776).
   #bridgecrew:skip=CKV_AWS_52:Skipping `Ensure S3 bucket has MFA delete enabled` due to issue using `mfa_delete` by terraform (https://github.com/hashicorp/terraform-provider-aws/issues/629).
-  acl           = "public-read"
+  acl           = var.bucket_acl
   bucket        = var.hostname
   tags          = module.default_label.tags
   force_destroy = var.force_destroy
@@ -130,6 +130,12 @@ data "aws_iam_policy_document" "default" {
       type        = "AWS"
       identifiers = ["*"]
     }
+
+    condition {
+      test     = "IpAddress"
+      values   = var.trusted_ips
+      variable = "aws:SourceIp"
+    }
   }
 
   dynamic "statement" {
@@ -150,34 +156,6 @@ data "aws_iam_policy_document" "default" {
         test     = "Bool"
         values   = ["false"]
         variable = "aws:SecureTransport"
-      }
-    }
-  }
-
-  dynamic "statement" {
-    for_each = flatten(var.trusted_ips) != [] ? [1] : []
-
-    # https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_examples_aws_deny-ip.html
-    content {
-      sid       = "AllowTrustedIPsOnly"
-      effect    = "Deny"
-      actions   = ["s3:*"]
-      resources = [local.bucket_arn, "${local.bucket_arn}/*"]
-
-      principals {
-        identifiers = ["*"]
-        type        = "*"
-      }
-
-      condition {
-        test     = "NotIpAddress"
-        values   = var.trusted_ips
-        variable = "aws:SourceIp"
-      }
-      condition {
-        test     = "Bool"
-        values   = ["false"]
-        variable = "aws:ViaAWSService"
       }
     }
   }
